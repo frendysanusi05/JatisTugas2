@@ -12,10 +12,10 @@ type apiConfigData struct {
 }
 
 type weatherData struct {
-	Name string `json: "nama"`
+	Name string `json:"name"`
 	Main struct {
-		Kelvin float64 `json: "temp"`
-	} `json: "main"`
+		Kelvin float64 `json:"temp"`
+	} `json:"main"`
 }
 
 func loadApiConfig(filename string) (apiConfigData, error) {
@@ -35,13 +35,13 @@ func loadApiConfig(filename string) (apiConfigData, error) {
 	return c, nil
 }
 
-func query(lat string, lon string)(weatherData, error) {
+func query(city string)(weatherData, error) {
 	apiConfig, err := loadApiConfig(".apiConfig")
 	if err != nil {
 		return weatherData{}, err
 	}
 
-	resp, err := http.Get("https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiConfig.OpenWeatherApiKey)
+	resp, err := http.Get("https://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=" + apiConfig.OpenWeatherApiKey)
 
 	if err != nil {
 		return weatherData{}, err
@@ -50,18 +50,17 @@ func query(lat string, lon string)(weatherData, error) {
 	defer resp.Body.Close()
 
 	var d weatherData
-	if err != json.NewDecoder(resp.Body).Decode(&d) {
+	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
 		return weatherData{}, err
 	}
 	return d, nil
 }
 
 func main() {
-	http.HandleFunc("/weather", 
+	http.HandleFunc("/weather/", 
 	func(w http.ResponseWriter, r *http.Request) {
-		lat := strings.SplitN(r.URL.Path, "/", 3)[2]
-		lon := strings.SplitN(r.URL.Path, "/", 4)[3]
-		data, err := query(lat, lon)
+		city := strings.SplitN(r.URL.Path, "/", 3)[2]
+		data, err := query(city)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
